@@ -80,47 +80,40 @@ class AddressBook(UserDict):
         if name in self.data:
             del self.data[name]
 
-def get_upcoming_birthdays(users):
-    """Celebrating birthdays in next 7 days"""
+    def get_upcoming_birthdays(self):
+        """Celebrating birthdays in next 7 days"""
 
-    date_now = datetime.today().date()
-    birthdays = []
+        date_now = datetime.today().date()
+        birthdays = []
 
-    # Check each user
-    for user in users:
+        for record in self.data.values:
+            user_birthday = record.birthday.value
 
-        # Create a copy of current user
-        current_user = user
+            # Calculate user birthday in current year
+            current_year = date_now.year
+            user_birthday_in_current_year = user_birthday.replace(year=current_year)
 
-        # Convert birthday date 'str' to 'date'
-        user_birthday = datetime.strptime(user["birthday"], "%Y.%m.%d").date()
+            # Calculate celebrating including weekends
+            congratulation_day = user_birthday_in_current_year.isoweekday()
+            if congratulation_day > 5:
+                if congratulation_day == 6:
+                    birthday = user_birthday_in_current_year + relativedelta(days=2)
+                else: birthday = user_birthday_in_current_year + relativedelta(days=1)
+            else: birthday = user_birthday_in_current_year
 
-        # Calculate user birthday in current year
-        current_year = date_now.year
-        user_birthday_in_current_year = user_birthday.replace(year=current_year)
+            # Calculate celebrating year
+            if birthday < date_now:
+                congratulation_date = birthday + relativedelta(years=1)
+            else: congratulation_date = birthday
 
-        # Calculate celebrating including weekends
-        congratulation_day = user_birthday_in_current_year.isoweekday()
-        if congratulation_day > 5:
-            if congratulation_day == 6:
-                birthday = user_birthday_in_current_year + relativedelta(days=2)
-            else: birthday = user_birthday_in_current_year + relativedelta(days=1)
-        else: birthday = user_birthday_in_current_year
+            # Calculate birthdays in the next 7 days
+            if date_now < congratulation_date < (date_now + relativedelta(days=7)):
+                congratulation_date_str = congratulation_date.strftime("%Y.%m.%d")
+                current_user = {"name": record.name.value}
+                current_user.update({"congratulation_date": congratulation_date_str})
+                birthdays.append(current_user)
 
-        # Calculate celebrating year
-        if birthday < date_now:
-            congratulation_date = birthday + relativedelta(years=1)
-        else: congratulation_date = birthday
-
-        # Calculate birthdays in the next 7 days
-        if date_now < congratulation_date < (date_now + relativedelta(days=7)):
-            congratulation_date_str = congratulation_date.strftime("%Y.%m.%d")
-            current_user.pop("birthday")
-            current_user.update({"congratulation_date": congratulation_date_str})
-            birthdays.append(current_user)
-
-    return birthdays
-
+        return birthdays
 
 # Створення нової адресної книги
 book = AddressBook()
@@ -129,7 +122,7 @@ book = AddressBook()
 john_record = Record("John")
 john_record.add_phone("1234567890")
 john_record.add_phone("5555555555")
-john_record.add_birthday("22.02.1976")
+john_record.add_birthday("17.05.1976")
 
     # Додавання запису John до адресної книги
 book.add_record(john_record)
