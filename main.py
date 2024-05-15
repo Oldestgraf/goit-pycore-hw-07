@@ -86,65 +86,150 @@ class AddressBook(UserDict):
         date_now = datetime.today().date()
         birthdays = []
 
-        for record in self.data.values:
-            user_birthday = record.birthday.value
+        for record in self.data.values():
+            if record.birthday is not None:
+                user_birthday = record.birthday.value
 
-            # Calculate user birthday in current year
-            current_year = date_now.year
-            user_birthday_in_current_year = user_birthday.replace(year=current_year)
+                # Calculate user birthday in current year
+                current_year = date_now.year
+                user_birthday_in_current_year = user_birthday.replace(year=current_year)
 
-            # Calculate celebrating including weekends
-            congratulation_day = user_birthday_in_current_year.isoweekday()
-            if congratulation_day > 5:
-                if congratulation_day == 6:
-                    birthday = user_birthday_in_current_year + relativedelta(days=2)
-                else: birthday = user_birthday_in_current_year + relativedelta(days=1)
-            else: birthday = user_birthday_in_current_year
+                # Calculate celebrating including weekends
+                congratulation_day = user_birthday_in_current_year.isoweekday()
+                if congratulation_day > 5:
+                    if congratulation_day == 6:
+                        birthday = user_birthday_in_current_year + relativedelta(days=2)
+                    else: birthday = user_birthday_in_current_year + relativedelta(days=1)
+                else: birthday = user_birthday_in_current_year
 
-            # Calculate celebrating year
-            if birthday < date_now:
-                congratulation_date = birthday + relativedelta(years=1)
-            else: congratulation_date = birthday
+                # Calculate celebrating year
+                if birthday < date_now:
+                    congratulation_date = birthday + relativedelta(years=1)
+                else: congratulation_date = birthday
 
-            # Calculate birthdays in the next 7 days
-            if date_now < congratulation_date < (date_now + relativedelta(days=7)):
-                congratulation_date_str = congratulation_date.strftime("%Y.%m.%d")
-                current_user = {"name": record.name.value}
-                current_user.update({"congratulation_date": congratulation_date_str})
-                birthdays.append(current_user)
+                # Calculate birthdays in the next 7 days
+                if date_now < congratulation_date < (date_now + relativedelta(days=7)):
+                    congratulation_date_str = congratulation_date.strftime("%Y.%m.%d")
+                    current_user = {"name": record.name.value}
+                    current_user.update({"congratulation_date": congratulation_date_str})
+                    birthdays.append(current_user)
 
         return birthdays
 
-# Створення нової адресної книги
-book = AddressBook()
+def input_error(func):
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except(IndexError, ValueError) as e:
+            print("Input error:", e)
+    return inner
 
-    # Створення запису для John
-john_record = Record("John")
-john_record.add_phone("1234567890")
-john_record.add_phone("5555555555")
-john_record.add_birthday("17.05.1976")
+    
+def parse_input(user_input):
+    command, *args = user_input.split()
+    command = command.strip().lower()
+    return command, *args
 
-    # Додавання запису John до адресної книги
-book.add_record(john_record)
 
-    # Створення та додавання нового запису для Jane
-jane_record = Record("Jane")
-jane_record.add_phone("9876543210")
-book.add_record(jane_record)
+@input_error
+def add_contact(args, book: AddressBook):
+    name, phone, *_ = args
+    record = book.find(name)
+    message = "Contact updated."
+    if record is None:
+        record = Record(name)
+        book.add_record(record)
+        message = "Contact added."
+    if phone:
+        record.add_phone(phone)
+    return message
 
-    # Виведення всіх записів у книзі
-for name, record in book.data.items():
-    print(record)
+@input_error
+def change_phone(args, book: AddressBook):
+    name, old_phone, new_phone = args
+    record = book.find(name)
+    if record:
+        record.edit_phone(old_phone, new_phone)
+        return "Phone number updated."
+    else:
+        return "Contact not found."
 
-#     # Знаходження та редагування телефону для John
-# john = book.find("John")
-# john.edit_phone("1234567890", "1112223333")
+@input_error
+def show_phone(args, book: AddressBook):
+    name, *_ = args
+    record = book.find(name)
+    if record:
+        return "; ".join(str(phone) for phone in record.phones)
+    else:
+        return "Contact not found."
 
-# print(john)  # Виведення: Contact name: John, phones: 1112223333; 5555555555
+@input_error
+def show_all(book: AddressBook):
+    if book:
+        return "\n".join(str(record) for record in book.values())
+    else:
+        return "Address book is empty."
 
-#     # Пошук конкретного телефону у записі John
-# found_phone = john.find_phone("5555555555")
-# print(f"{john.name}: {found_phone}")  # Виведення: 5555555555
+@input_error
+def add_birthday(args, book: AddressBook):
+    name, birthday = args
+    record = book.find(name)
+    if record:
+        record.add_birthday(birthday)
+        return "Birthday added."
+    else:
+        return "Contact not found."
 
-#     # Видалення запису Jane
-# book.delete("Jane")
+@input_error
+def show_birthday(args, book: AddressBook):
+    name, *_ = args
+    record = book.find(name)
+    if record and record.birthday:
+        return str(record.birthday)
+    else:
+        return "Birthday not found."
+
+@input_error
+def birthdays(book: AddressBook):
+    return book.get_upcoming_birthdays()
+
+def main():
+    book = AddressBook()
+    print("Welcome to the assistant bot!")
+    while True:
+        user_input = input("Enter a command: ")
+        command, *args = parse_input(user_input)
+
+        if command in ["close", "exit"]:
+            print("Good bye!")
+            break
+
+        elif command == "hello":
+            print("How can I help you?")
+
+        elif command == "add":
+            print(add_contact(args, book))
+
+        elif command == "change":
+            print(change_phone(args, book))
+
+        elif command == "phone":
+            print(show_phone(args, book))
+
+        elif command == "all":
+            print(show_all(book))
+
+        elif command == "add-birthday":
+            print(add_birthday(args, book))
+
+        elif command == "show-birthday":
+            print(show_birthday(args, book))
+
+        elif command == "birthdays":
+            print(birthdays(book))
+
+        else:
+            print("Invalid command.")
+
+if __name__ == "__main__":
+    main()
